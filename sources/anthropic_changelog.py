@@ -47,7 +47,7 @@ def fetch(client: Tabstack | None = None) -> dict:
     result = client.extract.json(
         url=ANTHROPIC_URL,
         json_schema=SCHEMA,
-        effort="standard",
+        effort="max",
     )
 
     fetched_at = datetime.now(timezone.utc).isoformat()

@@ -27,9 +27,17 @@ SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
 SNAPSHOT_DIR.mkdir(exist_ok=True)
 
 SOURCES = {
-    "tc39": "sources.tc39",
-    "anthropic": "sources.anthropic_changelog",
-    "openai": "sources.openai_changelog",
+    "tc39":          "sources.tc39",
+    "anthropic":     "sources.anthropic_changelog",
+    "openai":        "sources.openai_changelog",
+    "wasm":          "sources.wasm_proposals",
+    "nodejs":        "sources.nodejs_releases",
+    "typescript":    "sources.typescript_releases",
+    "google-ai":     "sources.google_ai_changelog",
+    "npm":           "sources.npm_ecosystem",
+    "deno":          "sources.deno_releases",
+    "bun":           "sources.bun_releases",
+    "w3c":           "sources.w3c_publications",
 }
 
 

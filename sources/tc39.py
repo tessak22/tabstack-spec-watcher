@@ -7,6 +7,7 @@ Uses /extract to pull proposal table, classifies stage changes as breaking/addit
 from tabstack import Tabstack
 from datetime import datetime, timezone
 from schema import SpecChange
+from sources._utils import infer_affects
 
 TC39_URL = "https://github.com/tc39/proposals"
 
@@ -159,7 +160,7 @@ def diff(previous: dict, current: dict) -> list[SpecChange]:
                 change_type="informational",
                 severity="low",
                 summary=f"New TC39 proposal added at {current_stage}: {proposal.get('description', '')}",
-                affects=["JavaScript"],
+                affects=infer_affects(name, proposal.get("description", "")),
                 stage_before=None,
                 stage_after=current_stage,
                 version_before=None,
@@ -175,7 +176,7 @@ def diff(previous: dict, current: dict) -> list[SpecChange]:
                 change_type=STAGE_CHANGE_TYPE.get(current_stage, "informational"),
                 severity=STAGE_SEVERITY.get(current_stage, "low"),
                 summary=f"{name} advanced from {previous_stage} to {current_stage}: {proposal.get('description', '')}",
-                affects=["JavaScript"],
+                affects=infer_affects(name, proposal.get("description", "")),
                 stage_before=previous_stage,
                 stage_after=current_stage,
                 version_before=None,

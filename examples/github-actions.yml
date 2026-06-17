@@ -1,0 +1,75 @@
+name: Spec Watcher
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'   # Every Monday at 9am UTC
+  workflow_dispatch:       # Allow manual runs
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install tabstack
+
+      - name: Run spec watcher (first run — snapshot only)
+        # Remove this step after the first successful run.
+        # It establishes the baseline so the next run can diff.
+        if: ${{ !hashFiles('snapshots/*.json') }}
+        run: python watch.py --snapshot-only
+        env:
+          TABSTACK_API_KEY: ${{ secrets.TABSTACK_API_KEY }}
+
+      - name: Run spec watcher
+        id: watch
+        run: |
+          OUTPUT=$(python watch.py --format json)
+          echo "changes=$OUTPUT" >> $GITHUB_OUTPUT
+          echo "$OUTPUT"
+        env:
+          TABSTACK_API_KEY: ${{ secrets.TABSTACK_API_KEY }}
+
+      - name: Commit updated snapshots
+        run: |
+          git config user.name "spec-watcher[bot]"
+          git config user.email "spec-watcher@noreply.github.com"
+          git add snapshots/
+          git diff --staged --quiet || git commit -m "chore: update spec snapshots [skip ci]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Slack on changes
+        if: steps.watch.outputs.changes != '[]'
+        run: |
+          HUMAN_OUTPUT=$(python watch.py)
+          curl -s -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-type: application/json' \
+            -d "{\"text\": \"*Spec Watcher — changes detected* 🔔\n\`\`\`${HUMAN_OUTPUT}\`\`\`\"}"
+        env:
+          TABSTACK_API_KEY: ${{ secrets.TABSTACK_API_KEY }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify on breaking changes only (email / PagerDuty)
+        if: steps.watch.outputs.changes != '[]'
+        run: |
+          BREAKING=$(echo '${{ steps.watch.outputs.changes }}' | python3 -c "
+          import json, sys
+          changes = json.load(sys.stdin)
+          breaking = [c for c in changes if c['severity'] == 'high' or c['change_type'] == 'breaking']
+          if breaking:
+              print(json.dumps(breaking, indent=2))
+          ")
+          if [ -n "$BREAKING" ]; then
+            echo "Breaking changes detected — pipe to PagerDuty/email here"
+            echo "$BREAKING"
+          fi
